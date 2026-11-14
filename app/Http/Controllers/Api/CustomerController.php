@@ -18,9 +18,22 @@ class CustomerController extends Controller
         protected KhataService $khataService
     ) {}
 
+    protected function getTenantId(Request $request): int
+    {
+        if ($request->user() && $request->user()->tenant_id) {
+            return (int) $request->user()->tenant_id;
+        }
+
+        if (app()->bound('currentTenant') && app('currentTenant')) {
+            return (int) app('currentTenant')->id;
+        }
+
+        return (int) $request->input('tenant_id', $request->query('tenant_id', 1));
+    }
+
     public function index(Request $request): JsonResponse
     {
-        $tenantId = (int) $request->query('tenant_id', 1);
+        $tenantId = $this->getTenantId($request);
         $search = $request->query('search');
 
         $customers = $this->customerRepo->getAllByTenant($tenantId, $search);
@@ -33,7 +46,7 @@ class CustomerController extends Controller
 
     public function ledger(Request $request, int $id): JsonResponse
     {
-        $tenantId = (int) $request->query('tenant_id', 1);
+        $tenantId = $this->getTenantId($request);
         $customer = $this->customerRepo->findById($tenantId, $id);
 
         if (!$customer) {
@@ -51,7 +64,7 @@ class CustomerController extends Controller
 
     public function recordPayment(RecordKhataPaymentRequest $request, int $id): JsonResponse
     {
-        $tenantId = (int) $request->validated('tenant_id');
+        $tenantId = (int) $request->validated('tenant_id', $this->getTenantId($request));
         $customer = $this->customerRepo->findById($tenantId, $id);
 
         if (!$customer) {
@@ -79,4 +92,3 @@ class CustomerController extends Controller
         ]);
     }
 }
-

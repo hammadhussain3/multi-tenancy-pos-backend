@@ -14,9 +14,22 @@ class DayClosingController extends Controller
         protected InvoiceRepositoryInterface $invoiceRepo
     ) {}
 
+    protected function getTenantId(Request $request): int
+    {
+        if ($request->user() && $request->user()->tenant_id) {
+            return (int) $request->user()->tenant_id;
+        }
+
+        if (app()->bound('currentTenant') && app('currentTenant')) {
+            return (int) app('currentTenant')->id;
+        }
+
+        return (int) $request->input('tenant_id', $request->query('tenant_id', 1));
+    }
+
     public function summary(Request $request): JsonResponse
     {
-        $tenantId = (int) $request->query('tenant_id', 1);
+        $tenantId = $this->getTenantId($request);
         $date = $request->query('date', Carbon::today()->toDateString());
 
         $summary = $this->invoiceRepo->getDailySalesSummary($tenantId, $date);
@@ -28,4 +41,3 @@ class DayClosingController extends Controller
         ]);
     }
 }
-
