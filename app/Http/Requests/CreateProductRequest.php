@@ -11,6 +11,15 @@ class CreateProductRequest extends FormRequest
         return true;
     }
 
+    protected function prepareForValidation(): void
+    {
+        if (!$this->has('tenant_id') && app()->bound('currentTenant')) {
+            $this->merge([
+                'tenant_id' => app('currentTenant')->id,
+            ]);
+        }
+    }
+
     public function rules(): array
     {
         return [
@@ -28,4 +37,3 @@ class CreateProductRequest extends FormRequest
         ];
     }
 }
-

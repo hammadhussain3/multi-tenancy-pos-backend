@@ -6,8 +6,10 @@ use App\Models\Customer;
 use App\Models\Product;
 use App\Models\StockMovement;
 use App\Models\Tenant;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
+use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 class PosCheckoutTest extends TestCase
@@ -59,6 +61,16 @@ class PosCheckoutTest extends TestCase
             'phone' => '03001234567',
             'credit_limit' => 10000.00,
         ]);
+
+        $user = User::create([
+            'tenant_id' => $this->tenant->id,
+            'name' => 'Test Cashier',
+            'email' => 'cashier@test.com',
+            'role' => 'cashier',
+            'password' => bcrypt('password'),
+            'is_active' => true,
+        ]);
+        Sanctum::actingAs($user, ['role:cashier']);
     }
 
     public function test_can_list_products_with_calculated_stock(): void

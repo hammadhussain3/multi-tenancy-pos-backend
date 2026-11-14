@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Middleware\CheckTenantModule;
+use App\Http\Middleware\IdentifyTenant;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -12,8 +14,22 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        $middleware->api(prepend: [
+            IdentifyTenant::class,
+        ]);
+
+        $middleware->alias([
+            'tenant.module' => CheckTenantModule::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        $exceptions->render(function (\Illuminate\Auth\AuthenticationException $e, \Illuminate\Http\Request $request) {
+            if ($request->is('api/*') || $request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthenticated. Valid cashier shift token required.',
+                    'error_code' => 'UNAUTHENTICATED',
+                ], 401);
+            }
+        });
     })->create();

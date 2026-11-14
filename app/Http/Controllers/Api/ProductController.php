@@ -18,9 +18,22 @@ class ProductController extends Controller
         protected InventoryService $inventoryService
     ) {}
 
+    protected function getTenantId(Request $request): int
+    {
+        if ($request->user() && $request->user()->tenant_id) {
+            return (int) $request->user()->tenant_id;
+        }
+
+        if (app()->bound('currentTenant') && app('currentTenant')) {
+            return (int) app('currentTenant')->id;
+        }
+
+        return (int) $request->input('tenant_id', $request->query('tenant_id', 1));
+    }
+
     public function index(Request $request): JsonResponse
     {
-        $tenantId = (int) $request->query('tenant_id', 1);
+        $tenantId = $this->getTenantId($request);
         $category = $request->query('category');
         $search = $request->query('search');
 
@@ -34,7 +47,7 @@ class ProductController extends Controller
 
     public function show(Request $request, int $id): JsonResponse
     {
-        $tenantId = (int) $request->query('tenant_id', 1);
+        $tenantId = $this->getTenantId($request);
         $product = $this->productRepo->findById($tenantId, $id);
 
         if (!$product) {
@@ -50,6 +63,10 @@ class ProductController extends Controller
     public function store(CreateProductRequest $request): JsonResponse
     {
         $data = $request->validated();
+        if (empty($data['tenant_id'])) {
+            $data['tenant_id'] = $this->getTenantId($request);
+        }
+
         $initialStock = (int) ($data['initial_stock'] ?? 0);
         unset($data['initial_stock']);
 
@@ -77,7 +94,7 @@ class ProductController extends Controller
 
     public function adjustStock(AdjustStockRequest $request, int $id): JsonResponse
     {
-        $tenantId = (int) $request->validated('tenant_id');
+        $tenantId = (int) $request->validated('tenant_id', $this->getTenantId($request));
         $product = $this->productRepo->findById($tenantId, $id);
 
         if (!$product) {
@@ -104,7 +121,7 @@ class ProductController extends Controller
 
     public function update(CreateProductRequest $request, int $id): JsonResponse
     {
-        $tenantId = (int) $request->validated('tenant_id');
+        $tenantId = (int) $request->validated('tenant_id', $this->getTenantId($request));
         $product = $this->productRepo->findById($tenantId, $id);
 
         if (!$product) {
@@ -126,7 +143,7 @@ class ProductController extends Controller
 
     public function destroy(Request $request, int $id): JsonResponse
     {
-        $tenantId = (int) $request->query('tenant_id', 1);
+        $tenantId = $this->getTenantId($request);
         $product = $this->productRepo->findById($tenantId, $id);
 
         if (!$product) {
@@ -141,4 +158,3 @@ class ProductController extends Controller
         ]);
     }
 }
-

@@ -18,21 +18,36 @@ class PosCheckoutController extends Controller
         protected InvoiceRepositoryInterface $invoiceRepo
     ) {}
 
+    protected function getTenantId(Request $request): int
+    {
+        if ($request->user() && $request->user()->tenant_id) {
+            return (int) $request->user()->tenant_id;
+        }
+
+        if (app()->bound('currentTenant') && app('currentTenant')) {
+            return (int) app('currentTenant')->id;
+        }
+
+        return (int) $request->input('tenant_id', $request->query('tenant_id', 1));
+    }
+
     /**
      * Handle POS checkout request.
      */
     public function checkout(CheckoutRequest $request): JsonResponse
     {
         try {
+            $tenantId = (int) $request->validated('tenant_id', $this->getTenantId($request));
+
             $invoice = $this->checkoutService->execute(
-                tenantId: (int) $request->validated('tenant_id'),
+                tenantId: $tenantId,
                 items: $request->validated('items'),
                 paymentMethod: $request->validated('payment_method'),
                 tenderBreakdown: $request->validated('tender_breakdown'),
                 customerId: $request->validated('customer_id'),
                 orderDiscount: (float) $request->validated('discount', 0.00),
                 deviceId: $request->validated('device_id', 'REG-01'),
-                cashierName: $request->validated('cashier_name', 'Cashier')
+                cashierName: $request->user()?->name ?? $request->validated('cashier_name', 'Cashier')
             );
 
             return response()->json([
@@ -53,7 +68,7 @@ class PosCheckoutController extends Controller
      */
     public function invoices(Request $request): JsonResponse
     {
-        $tenantId = (int) $request->query('tenant_id', 1);
+        $tenantId = $this->getTenantId($request);
         $search = $request->query('search');
 
         $invoices = $this->invoiceRepo->getAllByTenant($tenantId, $search);
@@ -64,4 +79,3 @@ class PosCheckoutController extends Controller
         ]);
     }
 }
-
